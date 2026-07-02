@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شورای هوش مصنوعی | سه مدل، یک جواب</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12141a; --surface:#1b1e27; --surface-2:#20242f;
+    --border:#2c303c; --border-soft:#232733;
+    --text:#edeef1; --text-muted:#8b93a3; --text-faint:#5c6272;
+    --amber:#e0a75e; --amber-dim:#3a2f1e;
+    --c-groq:#3ecf9c; --c-mistral:#7c8cf8; --c-hf:#d97757;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:'Vazirmatn',sans-serif;line-height:1.75;padding:24px 16px 80px;}
+  .wrap{max-width:980px;margin:0 auto;}
+  .header{text-align:center;margin-bottom:24px;}
+  .eyebrow{font-family:'Fira Code',monospace;font-size:13px;color:var(--amber);letter-spacing:1px;margin-bottom:6px;}
+  h1{font-size:28px;font-weight:700;margin:0 0 8px;}
+  .sub{color:var(--text-muted);font-size:15px;margin:0 auto 28px;max-width:620px;}
+  
+  .question-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:0 4px 12px rgba(0,0,0,.15);}
+  textarea{width:100%;min-height:110px;background:transparent;border:none;color:var(--text);font-family:'Vazirmatn',sans-serif;font-size:15.5px;resize:vertical;outline:none;line-height:1.7;}
+  textarea::placeholder{color:var(--text-faint);}
+  
+  .actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px;flex-wrap:wrap;}
+  button{font-family:'Vazirmatn',sans-serif;cursor:pointer;border-radius:10px;font-size:14.5px;transition:all .15s ease;font-weight:500;}
+  button:active{transform:scale(.985);}
+  #askBtn{background:var(--amber);color:#241a0c;border:none;font-weight:700;padding:13px 32px;box-shadow:0 3px 8px rgba(224,167,94,.3);}
+  #askBtn:hover:not(:disabled){filter:brightness(1.08);box-shadow:0 4px 12px rgba(224,167,94,.4);}
+  #askBtn:disabled{opacity:.55;cursor:not-allowed;}
+  .settings-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:11px 20px;}
+  .settings-toggle:hover{border-color:var(--text-faint);color:var(--text);}
+  
+  .settings-panel{display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:26px;}
+  .settings-panel.open{display:block;}
+  .settings-note{font-size:13.5px;color:var(--text-muted);margin:0 0 18px;line-height:1.6;}
+  .key-row{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--border-soft);}
+  .key-row:last-of-type{border-bottom:none;}
+  .key-label{width:130px;flex-shrink:0;font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px;}
+  .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .key-row input{flex:1;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-family:'Fira Code',monospace;font-size:13px;outline:none;}
+  .key-row input:focus{border-color:var(--amber);}
+  .key-hint{width:195px;flex-shrink:0;font-size:12px;color:var(--text-faint);line-height:1.5;}
+  #saveKeys{margin-top:16px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:10px 22px;font-weight:500;}
+  #saveKeys:hover{border-color:var(--amber);}
+  .save-status{font-size:13px;color:var(--amber);margin-right:12px;vertical-align:middle;}
+  
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.12);}
+  .card-bar{height:4px;width:100%;}
+  .card-inner{padding:16px 18px;}
+  .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .card-name{font-weight:700;font-size:15px;}
+  .card-status{font-family:'Fira Code',monospace;font-size:11.5px;color:var(--text-faint);padding:2px 8px;border-radius:4px;background:var(--surface-2);}
+  .card-body{font-size:14px;color:var(--text-muted);white-space:pre-wrap;max-height:280px;overflow-y:auto;padding:4px 0;line-height:1.65;}
+  .card-body.done{color:var(--text);}
+  .card-body.error{color:#e08a8a;}
+  .spinner{display:inline-block;width:12px;height:12px;border:2.5px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:spin .75s linear infinite;vertical-align:-2px;margin-left:7px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  
+  .converge{display:flex;justify-content:center;margin:8px 0 4px;opacity:.4;font-size:18px;}
+  
+  .summary-card{background:linear-gradient(145deg, var(--amber-dim), #2a2318);border:1px solid #5c4730;border-radius:var(--radius);padding:20px 22px;display:none;margin-top:8px;box-shadow:0 6px 16px rgba(0,0,0,.2);}
+  .summary-card.show{display:block;}
+  .summary-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;color:var(--amber);font-weight:700;font-size:15.5px;}
+  .summary-body{font-size:15px;white-space:pre-wrap;color:var(--text);line-height:1.7;}
+  
+  .empty-note{font-size:13px;color:var(--text-faint);text-align:center;padding:4px 0;}
+  .footer{text-align:center;margin-top:40px;color:var(--text-faint);font-size:12.5px;}
+  .footer a{color:var(--amber);text-decoration:none;}
+  .footer a:hover{text-decoration:underline;}
+  
+  .info-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:13.5px;color:var(--text-muted);}
+  .info-box strong{color:var(--amber);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="eyebrow">سه مدل • یک جواب هوشمند</div>
+    <h1>شورای هوش مصنوعی</h1>
+    <p class="sub">سوالت رو یک بار بپرس. همزمان از سه هوش مصنوعی قدرتمند جواب بگیر و یک جمع‌بندی دقیق و بی‌طرفانه ببین.</p>
+  </div>
+
+  <div class="info-box">
+    <strong>نکته:</strong> کلیدهای API رایگان از Groq، Mistral و Hugging Face بگیر و در بخش تنظیمات وارد کن. کلیدها فقط در مرورگر خودت ذخیره می‌شن و هیچ‌جا فرستاده نمی‌شن.
+  </div>
+
+  <div class="question-box">
+    <textarea id="question" placeholder="مثال: بهترین راه‌های افزایش بهره‌وری در کار از راه دور چیه؟ یا هر سوال دیگه‌ای به فارسی یا انگلیسی..."></textarea>
+  </div>
+
+  <div class="actions">
+    <button id="askBtn" onclick="askAll()">پرسیدن از همه مدل‌ها</button>
+    <button class="settings-toggle" onclick="toggleSettings()">⚙️ تنظیمات کلیدهای API</button>
+  </div>
+
+  <div class="settings-panel" id="settingsPanel">
+    <p class="settings-note">
+      کلیدهای API هر سرویس رو وارد کن. بعد از ذخیره، برای همیشه در مرورگرت می‌مونن.<br>
+      <strong>لینک‌های رایگان:</strong><br>
+      • <a href="https://console.groq.com/keys" target="_blank" style="color:var(--amber)">Groq</a> — سریع‌ترین مدل‌های رایگان<br>
+      • <a href="https://console.mistral.ai/api-keys" target="_blank" style="color:var(--amber)">Mistral</a> — مدل‌های باکیفیت<br>
+      • <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--amber)">Hugging Face</a> — توکن رایگان بساز (با دسترسی Inference)
+    </p>
+    <div class="key-row">
+      <div class="key-label"><span class="dot" style="background:var(--c-groq)"></span>Groq (Llama)</div>
+      <input type="password" id="key-groq" placeholder="gsk_xxxxxxxxxxxxxxxxxxxxxxxx">
+      <div class="key-hint">رایگان و خیلی سریع<br>مدل: Llama 3.3 70B</div>
+    </div>
+    <div class="key-row">
+      <div class="key-label"><span class="dot" style="background:var(--c-mistral)"></span>Mistral</div>
+      <input type="password" id="key-mistral" placeholder="xxxxxxxxxxxxxxxxxxxxxxxx">
+      <div class="key-hint">رایگان<br>مدل: Mistral Small Latest</div>
+    </div>
+    <div class="key-row">
+      <div class="key-label"><span class="dot" style="background:var(--c-hf)"></span>Hugging Face</div>
+      <input type="password" id="key-hf" placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxx">
+      <div class="key-hint">رایگان (با محدودیت)<br>مدل: Llama 3.3 70B</div>
+    </div>
+    <div>
+      <button id="saveKeys" onclick="saveKeys()">ذخیره کلیدها</button>
+      <span class="save-status" id="saveStatus"></span>
+    </div>
+  </div>
+
+  <div class="grid" id="results">
+    <div class="card" id="card-groq">
+      <div class="card-bar" style="background:var(--c-groq)"></div>
+      <div class="card-inner">
+        <div class="card-head">
+          <span class="card-name">Groq · Llama 3.3</span>
+          <span class="card-status" id="status-groq">آماده</span>
+        </div>
+        <div class="card-body" id="body-groq">هنوز سوالی پرسیده نشده.</div>
+      </div>
+    </div>
+    <div class="card" id="card-mistral">
+      <div class="card-bar" style="background:var(--c-mistral)"></div>
+      <div class="card-inner">
+        <div class="card-head">
+          <span class="card-name">Mistral</span>
+          <span class="card-status" id="status-mistral">آماده</span>
+        </div>
+        <div class="card-body" id="body-mistral">هنوز سوالی پرسیده نشده.</div>
+      </div>
+    </div>
+    <div class="card" id="card-hf">
+      <div class="card-bar" style="background:var(--c-hf)"></div>
+      <div class="card-inner">
+        <div class="card-head">
+          <span class="card-name">Hugging Face</span>
+          <span class="card-status" id="status-hf">آماده</span>
+        </div>
+        <div class="card-body" id="body-hf">هنوز سوالی پرسیده نشده.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty-note" id="corsNote"></div>
+  <div class="converge">▾</div>
+
+  <div class="summary-card" id="summaryCard">
+    <div class="summary-head">◆ جمع‌بندی شورا</div>
+    <div class="summary-body" id="summaryBody"></div>
+  </div>
+
+  <div class="footer">
+    ساخته شده با ❤️ • کلیدها محلی ذخیره می‌شن • 
+    <a href="https://groq.com" target="_blank">Groq</a> • 
+    <a href="https://mistral.ai" target="_blank">Mistral</a> • 
+    <a href="https://huggingface.co" target="_blank">Hugging Face</a>
+  </div>
+
+</div>
+
+<script>
+/* ======== Storage helper (localStorage) ======== */
+const storageHelper = {
+  get(key){
+    const v = localStorage.getItem(key);
+    return v !== null ? {value: v} : null;
+  },
+  set(key, value){
+    localStorage.setItem(key, value);
+    return {value};
+  }
+};
+
+function toggleSettings(){
+  document.getElementById('settingsPanel').classList.toggle('open');
+}
+
+function loadKeys(){
+  const ids = ['groq','mistral','hf'];
+  for(const id of ids){
+    const r = storageHelper.get('apikey:'+id);
+    if(r && r.value) document.getElementById('key-'+id).value = r.value;
+  }
+}
+loadKeys();
+
+function saveKeys(){
+  const ids = ['groq','mistral','hf'];
+  for(const id of ids){
+    const val = document.getElementById('key-'+id).value.trim();
+    if(val) storageHelper.set('apikey:'+id, val);
+  }
+  const s = document.getElementById('saveStatus');
+  s.textContent = '✓ ذخیره شد';
+  setTimeout(()=>{s.textContent='';}, 2200);
+}
+
+function setStatus(id, status){
+  document.getElementById('status-'+id).textContent = status;
+}
+function setBody(id, text, cls){
+  const el = document.getElementById('body-'+id);
+  el.textContent = text;
+  el.className = 'card-body' + (cls ? ' '+cls : '');
+}
+function setLoading(id){
+  document.getElementById('status-'+id).innerHTML = '<span class="spinner"></span> در حال دریافت پاسخ';
+  setBody(id, 'در حال پرسیدن از مدل...', '');
+}
+
+async function throwApiError(res){
+  let detail = '';
+  try{
+    const data = await res.json();
+    detail = (data.error && (data.error.message || data.error)) || data.message || JSON.stringify(data);
+  }catch(e){}
+  throw new Error('HTTP ' + res.status + (detail ? ' — ' + detail : ''));
+}
+
+/* ======== API Callers ======== */
+async function callGroq(q, key){
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{role:'user', content:q}],
+      temperature: 0.7,
+      max_tokens: 1200
+    })
+  });
+  if(!res.ok) await throwApiError(res);
+  const data = await res.json();
+  return data.choices && data.choices[0] ? data.choices[0].message.content.trim() : '';
+}
+
+async function callMistral(q, key){
+  const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body: JSON.stringify({
+      model: 'mistral-small-latest',
+      messages: [{role:'user', content:q}],
+      temperature: 0.7,
+      max_tokens: 1200
+    })
+  });
+  if(!res.ok) await throwApiError(res);
+  const data = await res.json();
+  return data.choices && data.choices[0] ? data.choices[0].message.content.trim() : '';
+}
+
+async function callHuggingFace(q, key){
+  const res = await fetch('https://api-inference.huggingface.co/v1/chat/completions', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body: JSON.stringify({
+      model: 'meta-llama/Llama-3.3-70B-Instruct',
+      messages: [{role:'user', content:q}],
+      temperature: 0.7,
+      max_tokens: 1200
+    })
+  });
+  if(!res.ok) await throwApiError(res);
+  const data = await res.json();
+  return data.choices && data.choices[0] ? data.choices[0].message.content.trim() : '';
+}
+
+async function runProvider(id, key, fn){
+  if(!key){
+    setStatus(id, 'بدون کلید');
+    setBody(id, 'کلید API وارد نشده. از بخش تنظیمات کلید رو اضافه کن.', 'error');
+    return null;
+  }
+  setLoading(id);
+  try{
+    const text = await fn();
+    setStatus(id, 'پاسخ آماده');
+    setBody(id, text || '(پاسخ خالی برگشت)', 'done');
+    return text;
+  }catch(e){
+    setStatus(id, 'خطا');
+    let msg = e && e.message ? e.message : 'خطای نامشخص';
+    if(e instanceof TypeError || /Failed to fetch|NetworkError|Load failed/i.test(msg)){
+      msg = 'ارتباط با سرویس برقرار نشد (ممکنه به خاطر محدودیت مرورگر یا فایروال باشه).';
+    } else if(/HTTP 401|invalid.*key|unauthorized/i.test(msg)){
+      msg = 'کلید API نامعتبر یا منقضی شده.';
+    } else if(/HTTP 429|rate limit|too many/i.test(msg)){
+      msg = 'سهمیه رایگان امروز تموم شده. بعداً امتحان کن یا از کلید دیگه استفاده کن.';
+    } else if(/HTTP 503|model.*loading/i.test(msg)){
+      msg = 'مدل در حال بارگذاریه، چند ثانیه دیگه دوباره امتحان کن.';
+    }
+    setBody(id, msg, 'error');
+    return null;
+  }
+}
+
+async function askAll(){
+  const qEl = document.getElementById('question');
+  const q = qEl.value.trim();
+  if(!q){
+    qEl.style.border = '1px solid #e08a8a';
+    setTimeout(()=> qEl.style.border = 'none', 1200);
+    return;
+  }
+  
+  const askBtn = document.getElementById('askBtn');
+  askBtn.disabled = true;
+  document.getElementById('summaryCard').classList.remove('show');
+  document.getElementById('corsNote').textContent = '';
+
+  const keys = {
+    groq: document.getElementById('key-groq').value.trim(),
+    mistral: document.getElementById('key-mistral').value.trim(),
+    hf: document.getElementById('key-hf').value.trim()
+  };
+
+  // Run all three in parallel
+  const [groqText, mistralText, hfText] = await Promise.all([
+    runProvider('groq', keys.groq, () => callGroq(q, keys.groq)),
+    runProvider('mistral', keys.mistral, () => callMistral(q, keys.mistral)),
+    runProvider('hf', keys.hf, () => callHuggingFace(q, keys.hf))
+  ]);
+
+  const results = {groq: groqText, mistral: mistralText, hf: hfText};
+  const names = {groq:'Groq (Llama)', mistral:'Mistral', hf:'Hugging Face'};
+  const workingIds = Object.keys(results).filter(id => results[id] && results[id].trim().length > 10);
+
+  askBtn.disabled = false;
+
+  if(workingIds.length === 0){
+    document.getElementById('corsNote').innerHTML = 'هیچ مدلی پاسخ نداد. کلیدها رو چک کن یا بعداً دوباره امتحان کن.<br><small>نکته: بعضی مرورگرها یا شبکه‌ها ممکنه دسترسی مستقیم رو محدود کنن.</small>';
+    return;
+  }
+
+  // Show summary card and generate council summary
+  const summaryCard = document.getElementById('summaryCard');
+  const summaryBody = document.getElementById('summaryBody');
+  summaryCard.classList.add('show');
+  summaryBody.innerHTML = '<span class="spinner"></span> در حال جمع‌بندی پاسخ‌ها توسط شورا...';
+
+  // Build combined prompt for summary
+  let combined = `سوال کاربر: ${q}\n\n`;
+  for(const id of workingIds){
+    combined += `--- پاسخ ${names[id]} ---\n${results[id]}\n\n`;
+  }
+  combined += `\n\nدستور: این پاسخ‌های سه هوش مصنوعی مختلف به یک سوال هستن. یک جمع‌بندی کوتاه، دقیق و بی‌طرفانه به زبان فارسی بنویس. نقاط مشترک، تفاوت‌های کلیدی و یک نتیجه‌گیری کاربردی و مفید رو ذکر کن. حداکثر ۴-۵ جمله.`;
+
+  // Prefer Groq for summary (fast + good at instructions), then others
+  const summaryOrder = [];
+  if(keys.groq && workingIds.includes('groq')) summaryOrder.push('groq');
+  if(keys.mistral && workingIds.includes('mistral')) summaryOrder.push('mistral');
+  if(keys.hf && workingIds.includes('hf')) summaryOrder.push('hf');
+  
+  // If no keys for working, just use first working
+  if(summaryOrder.length === 0) summaryOrder.push(workingIds[0]);
+
+  let summaryDone = false;
+  let lastErr = '';
+  
+  for(const id of summaryOrder){
+    try{
+      let summaryText;
+      if(id === 'groq') summaryText = await callGroq(combined, keys.groq);
+      else if(id === 'mistral') summaryText = await callMistral(combined, keys.mistral);
+      else summaryText = await callHuggingFace(combined, keys.hf);
+      
+      summaryBody.textContent = summaryText || 'جمع‌بندی خالی برگشت.';
+      summaryDone = true;
+      break;
+    }catch(e){
+      lastErr = e && e.message ? e.message : 'خطای نامشخص';
+      continue;
+    }
+  }
+  
+  if(!summaryDone){
+    summaryBody.textContent = 'جمع‌بندی خودکار انجام نشد. می‌تونی خودت پاسخ‌ها رو بخونی و جمع‌بندی کنی.\n\nدلیل: ' + lastErr;
+  }
+}
+
+// Allow Enter key to ask (with Ctrl/Cmd)
+document.getElementById('question').addEventListener('keydown', function(e){
+  if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
+    e.preventDefault();
+    askAll();
+  }
+});
+
+// Initial welcome message in one card (optional)
+window.addEventListener('load', function(){
+  // Optional: show a hint in one card if no question asked yet
+  // Already handled by HTML
+  console.log('%c[شورای هوش مصنوعی] نسخه عمومی آماده استفاده. کلیدهای API رو وارد کن و سوال بپرس!', 'color:#5c6272');
+});
+</script>
+</body>
+</html>
