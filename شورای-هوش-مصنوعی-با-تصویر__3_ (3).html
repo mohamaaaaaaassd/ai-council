@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شورای هوش مصنوعی | سه مدل، یک جواب</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12141a; --surface:#1b1e27; --surface-2:#20242f;
+    --border:#2c303c; --border-soft:#232733;
+    --text:#edeef1; --text-muted:#8b93a3; --text-faint:#5c6272;
+    --amber:#e0a75e; --amber-dim:#3a2f1e;
+    --c-groq:#3ecf9c; --c-mistral:#7c8cf8; --c-web:#f59e0b;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:'Vazirmatn',sans-serif;line-height:1.75;padding:24px 16px 80px;}
+  .wrap{max-width:980px;margin:0 auto;}
+  .header{text-align:center;margin-bottom:24px;}
+  .eyebrow{font-family:'Fira Code',monospace;font-size:13px;color:var(--amber);letter-spacing:1px;margin-bottom:6px;}
+  h1{font-size:28px;font-weight:700;margin:0 0 8px;}
+  .sub{color:var(--text-muted);font-size:15px;margin:0 auto 28px;max-width:620px;}
+  
+  .question-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:0 4px 12px rgba(0,0,0,.15);}
+  textarea{width:100%;min-height:110px;background:transparent;border:none;color:var(--text);font-family:'Vazirmatn',sans-serif;font-size:15.5px;resize:vertical;outline:none;line-height:1.7;}
+  textarea::placeholder{color:var(--text-faint);}
+  
+  .actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px;flex-wrap:wrap;}
+  button{font-family:'Vazirmatn',sans-serif;cursor:pointer;border-radius:10px;font-size:14.5px;transition:all .15s ease;font-weight:500;}
+  button:active{transform:scale(.985);}
+  #askBtn{background:var(--amber);color:#241a0c;border:none;font-weight:700;padding:13px 32px;box-shadow:0 3px 8px rgba(224,167,94,.3);}
+  #askBtn:hover:not(:disabled){filter:brightness(1.08);box-shadow:0 4px 12px rgba(224,167,94,.4);}
+  #askBtn:disabled{opacity:.55;cursor:not-allowed;}
+  .settings-toggle{background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:11px 20px;}
+  .settings-toggle:hover{border-color:var(--text-faint);color:var(--text);}
+  
+  .settings-panel{display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:26px;}
+  .settings-panel.open{display:block;}
+  .settings-note{font-size:13.5px;color:var(--text-muted);margin:0 0 18px;line-height:1.6;}
+  .key-row{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--border-soft);}
+  .key-row:last-of-type{border-bottom:none;}
+  .key-label{width:130px;flex-shrink:0;font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px;}
+  .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .key-row input{flex:1;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-family:'Fira Code',monospace;font-size:13px;outline:none;}
+  .key-row input:focus{border-color:var(--amber);}
+  .key-hint{width:195px;flex-shrink:0;font-size:12px;color:var(--text-faint);line-height:1.5;}
+  #saveKeys{margin-top:16px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:10px 22px;font-weight:500;}
+  #saveKeys:hover{border-color:var(--amber);}
+  .save-status{font-size:13px;color:var(--amber);margin-right:12px;vertical-align:middle;}
+  
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.12);}
+  .card-bar{height:4px;width:100%;}
+  .card-inner{padding:16px 18px;}
+  .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .card-name{font-weight:700;font-size:15px;}
+  .card-status{font-family:'Fira Code',monospace;font-size:11.5px;color:var(--text-faint);padding:2px 8px;border-radius:4px;background:var(--surface-2);}
+  .card-body{font-size:14px;color:var(--text-muted);white-space:pre-wrap;max-height:280px;overflow-y:auto;padding:4px 0;line-height:1.65;}
+  .card-body.done{color:var(--text);}
+  .card-body.error{color:#e08a8a;}
+  .spinner{display:inline-block;width:12px;height:12px;border:2.5px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:spin .75s linear infinite;vertical-align:-2px;margin-left:7px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  
+  .converge{display:flex;justify-content:center;margin:8px 0 4px;opacity:.4;font-size:18px;}
+  
+  .summary-card{background:linear-gradient(145deg, var(--amber-dim), #2a2318);border:1px solid #5c4730;border-radius:var(--radius);padding:20px 22px;display:none;margin-top:8px;box-shadow:0 6px 16px rgba(0,0,0,.2);}
+  .summary-card.show{display:block;}
+  .summary-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;color:var(--amber);font-weight:700;font-size:15.5px;}
+  .summary-body{font-size:15px;white-space:pre-wrap;color:var(--text);line-height:1.7;}
+  
+  .empty-note{font-size:13px;color:var(--text-faint);text-align:center;padding:4px 0;}
+  .footer{text-align:center;margin-top:40px;color:var(--text-faint);font-size:12.5px;}
+  .footer a{color:var(--amber);text-decoration:none;}
+  .footer a:hover{text-decoration:underline;}
+  
+  .info-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:13.5px;color:var(--text-muted);}
+  .info-box strong{color:var(--amber);}
+
+  /* Image upload */
+  .image-attach-row{display:flex;align-items:center;gap:12px;padding-top:12px;margin-top:10px;border-top:1px solid var(--border-soft);flex-wrap:wrap;}
+  .attach-btn{background:var(--surface-2);border:1px solid var(--border);color:var(--text-muted);padding:9px 16px;font-size:13.5px;display:inline-flex;align-items:center;gap:7px;}
+  .attach-btn:hover{border-color:var(--amber);color:var(--text);}
+  #imageInput{display:none;}
+  .image-preview-wrap{position:relative;display:none;align-items:center;gap:10px;}
+  .image-preview-wrap.show{display:flex;}
+  #imagePreview{max-height:56px;max-width:90px;border-radius:8px;border:1px solid var(--border);object-fit:cover;}
+  .remove-image-btn{background:var(--surface-2);border:1px solid var(--border);color:var(--text-muted);width:26px;height:26px;border-radius:50%;font-size:14px;line-height:1;padding:0;}
+  .remove-image-btn:hover{border-color:#e08a8a;color:#e08a8a;}
+  .image-attach-note{font-size:12px;color:var(--text-faint);}
+</style>
+</head>
+<body>
+
+<!-- Login / Access Code Screen -->
+<div id="loginScreen" style="position:fixed;inset:0;background:rgba(18,20,26,0.96);display:none;align-items:center;justify-content:center;z-index:99999;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 28px;max-width:380px;width:92%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.3);">
+    <div style="font-size:42px;margin-bottom:12px;">🔐</div>
+    <h2 style="margin:0 0 8px;font-size:22px;">دسترسی به شورای هوش مصنوعی</h2>
+    <p style="color:var(--text-muted);font-size:14px;line-height:1.7;margin-bottom:20px;">
+      برای استفاده از این ابزار، کد دسترسی را وارد کنید.<br>
+      <strong style="color:var(--amber);">کد را مستقیماً از سازنده دریافت کنید.</strong>
+    </p>
+    
+    <input type="password" id="accessCode" placeholder="کد ورود را وارد کنید" 
+           style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:13px 16px;border-radius:10px;font-family:'Fira Code',monospace;font-size:15.5px;outline:none;text-align:center;margin-bottom:16px;">
+    
+    <button onclick="checkAccessCode()" 
+            style="background:var(--amber);color:#241a0c;border:none;font-weight:700;padding:13px 44px;border-radius:10px;font-size:15px;cursor:pointer;width:100%;box-shadow:0 3px 10px rgba(224,167,94,.3);">
+      ورود به شورا
+    </button>
+    
+    <div id="loginError" style="color:#e08a8a;margin-top:14px;font-size:13px;display:none;line-height:1.5;"></div>
+    
+    <div style="margin-top:22px;font-size:11.5px;color:var(--text-faint);">
+      کلیدهای API و تمام داده‌ها فقط در مرورگر شما ذخیره می‌شوند.
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="header">
+    <div class="eyebrow">دو مدل هوش مصنوعی + جستجو و خلاصه هوشمند</div>
+    <h1>شورای هوش مصنوعی</h1>
+    <p class="sub">سوالت رو بپرس. از دو هوش مصنوعی قوی جواب بگیر + اطلاعات به‌روز از ویکی‌پدیا و وب جستجو و خلاصه بشه.</p>
+  </div>
+
+  <div class="info-box">
+    <strong>نکته:</strong> فقط دو کلید API رایگان از Groq و Mistral نیاز داری. بخش سوم به‌صورت خودکار از ویکی‌پدیا و وب جستجو و خلاصه می‌کنه (رایگان و بدون محدودیت روزانه).
+  </div>
+
+  <div class="question-box">
+    <textarea id="question" placeholder="مثال: هوش مصنوعی چیست؟ یا بهترین روش‌های یادگیری برنامه‌نویسی در ۲۰۲۶ چیه؟"></textarea>
+    <div class="image-attach-row">
+      <input type="file" id="imageInput" accept="image/*" onchange="handleImageSelect(event)">
+      <button type="button" class="attach-btn" onclick="document.getElementById('imageInput').click()">🖼️ افزودن تصویر</button>
+      <div class="image-preview-wrap" id="imagePreviewWrap">
+        <img id="imagePreview" alt="پیش‌نمایش تصویر">
+        <button type="button" class="remove-image-btn" onclick="removeImage()">✕</button>
+      </div>
+      <span class="image-attach-note">می‌تونی تصویر اضافه کنی و درباره‌اش از Groq و Mistral سوال بپرسی.</span>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="askBtn" onclick="askAll()">پرسیدن از همه</button>
+    <button class="settings-toggle" onclick="toggleSettings()">⚙️ تنظیمات کلیدهای API</button>
+  </div>
+
+  <div class="settings-panel" id="settingsPanel">
+    <p class="settings-note">
+      فقط کلیدهای Groq و Mistral رو وارد کن. بخش جستجو و خلاصه خودکار کار می‌کنه و نیازی به کلید نداره.
+    </p>
+    <div class="key-row">
+      <div class="key-label"><span class="dot" style="background:var(--c-groq)"></span>Groq</div>
+      <input type="password" id="key-groq" placeholder="gsk_xxxxxxxxxxxxxxxxxxxxxxxx">
+      <div class="key-hint">رایگان و سریع<br>مدل: Llama 3.3 70B</div>
+    </div>
+    <div class="key-row">
+      <div class="key-label"><span class="dot" style="background:var(--c-mistral)"></span>Mistral</div>
+      <input type="password" id="key-mistral" placeholder="xxxxxxxxxxxxxxxxxxxxxxxx">
+      <div class="key-hint">رایگان<br>مدل: Mistral Small Latest</div>
+    </div>
+    <div>
+      <button id="saveKeys" onclick="saveKeys()">ذخیره کلیدها</button>
+      <span class="save-status" id="saveStatus"></span>
+    </div>
+  </div>
+
+  <div class="grid" id="results">
+    <!-- Groq -->
+    <div class="card" id="card-groq">
+      <div class="card-bar" style="background:var(--c-groq)"></div>
+      <div class="card-inner">
+        <div class="card-head">
+          <span class="card-name">Groq · Llama 3.3</span>
+          <span class="card-status" id="status-groq">آماده</span>
+        </div>
+        <div class="card-body" id="body-groq">هنوز سوالی پرسیده نشده.</div>
+      </div>
+    </div>
+
+    <!-- Mistral -->
+    <div class="card" id="card-mistral">
+      <div class="card-bar" style="background:var(--c-mistral)"></div>
+      <div class="card-inner">
+        <div class="card-head">
+          <span class="card-name">Mistral</span>
+          <span class="card-status" id="status-mistral">آماده</span>
+        </div>
+        <div class="card-body" id="body-mistral">هنوز سوالی پرسیده نشده.</div>
+      </div>
+    </div>
+
+    <!-- Web Search + Summary -->
+    <div class="card" id="card-web">
+      <div class="card-bar" style="background:var(--c-web)"></div>
+      <div class="card-inner">
+        <div class="card-head">
+          <span class="card-name">جستجو + خلاصه هوشمند</span>
+          <span class="card-status" id="status-web">آماده</span>
+        </div>
+        <div class="card-body" id="body-web">اطلاعات مرتبط از ویکی‌پدیا و وب را جستجو و خلاصه می‌کند.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty-note" id="corsNote"></div>
+  <div class="converge">▾</div>
+
+  <div class="summary-card" id="summaryCard">
+    <div class="summary-head">◆ جمع‌بندی شورا</div>
+    <div class="summary-body" id="summaryBody"></div>
+  </div>
+
+  <div class="footer">
+    ساخته شده توسط محمد حنیفه نیا (ESIA) • کلیدها محلی ذخیره می‌شن • 
+    <a href="https://groq.com" target="_blank">Groq</a> • 
+    <a href="https://mistral.ai" target="_blank">Mistral</a> • 
+    جستجو از ویکی‌پدیا
+  </div>
+
+</div>
+
+<script>
+/* ======== Storage helper ======== */
+const storageHelper = {
+  get(key){
+    const v = localStorage.getItem(key);
+    return v !== null ? {value: v} : null;
+  },
+  set(key, value){
+    localStorage.setItem(key, value);
+    return {value};
+  }
+};
+
+/* ======== Access Code ======== */
+const CORRECT_ACCESS_CODE = "1388082713880221";
+
+function checkAccessCode(){
+  const input = document.getElementById('accessCode').value.trim();
+  const errorEl = document.getElementById('loginError');
+  
+  if(input === CORRECT_ACCESS_CODE){
+    localStorage.setItem('aiCouncilAccess', 'granted');
+    document.getElementById('loginScreen').style.display = 'none';
+    errorEl.style.display = 'none';
+  } else {
+    errorEl.textContent = 'کد اشتباه است. لطفاً کد را مستقیماً از سازنده دریافت کنید.';
+    errorEl.style.display = 'block';
+    document.getElementById('accessCode').value = '';
+  }
+}
+
+function toggleSettings(){
+  document.getElementById('settingsPanel').classList.toggle('open');
+}
+
+function loadKeys(){
+  const ids = ['groq','mistral'];
+  for(const id of ids){
+    const r = storageHelper.get('apikey:'+id);
+    if(r && r.value) document.getElementById('key-'+id).value = r.value;
+  }
+}
+loadKeys();
+
+function saveKeys(){
+  const ids = ['groq','mistral'];
+  for(const id of ids){
+    const val = document.getElementById('key-'+id).value.trim();
+    if(val) storageHelper.set('apikey:'+id, val);
+  }
+  const s = document.getElementById('saveStatus');
+  s.textContent = '✓ ذخیره شد';
+  setTimeout(()=>{s.textContent='';}, 2200);
+}
+
+function setStatus(id, status){
+  document.getElementById('status-'+id).textContent = status;
+}
+function setBody(id, text, cls){
+  const el = document.getElementById('body-'+id);
+  el.textContent = text;
+  el.className = 'card-body' + (cls ? ' '+cls : '');
+}
+function setLoading(id){
+  document.getElementById('status-'+id).innerHTML = '<span class="spinner"></span> در حال دریافت';
+  setBody(id, 'در حال پردازش...', '');
+}
+
+/* ======== Image Attach (NEW) ======== */
+let currentImageBase64 = null; // full data URL, e.g. data:image/png;base64,....
+
+function handleImageSelect(event){
+  const file = event.target.files && event.target.files[0];
+  if(!file) return;
+
+  if(!file.type.startsWith('image/')){
+    alert('لطفاً یک فایل تصویری انتخاب کنید.');
+    event.target.value = '';
+    return;
+  }
+  // ~4MB limit to stay safely under provider base64 request-size limits
+  if(file.size > 4 * 1024 * 1024){
+    alert('حجم تصویر باید کمتر از ۴ مگابایت باشد.');
+    event.target.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    currentImageBase64 = e.target.result;
+    const preview = document.getElementById('imagePreview');
+    preview.src = currentImageBase64;
+    document.getElementById('imagePreviewWrap').classList.add('show');
+  };
+  reader.onerror = function(){
+    alert('خطا در خواندن تصویر. دوباره امتحان کنید.');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImage(){
+  currentImageBase64 = null;
+  document.getElementById('imageInput').value = '';
+  document.getElementById('imagePreview').src = '';
+  document.getElementById('imagePreviewWrap').classList.remove('show');
+}
+
+/* ======== Groq & Mistral API ======== */
+async function callGroq(q, key, imageBase64){
+  // Use a vision-capable model automatically when an image is attached
+  const model = imageBase64 ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'llama-3.3-70b-versatile';
+  const messageContent = imageBase64
+    ? [
+        { type:'text', text:q },
+        { type:'image_url', image_url:{ url: imageBase64 } }
+      ]
+    : q;
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body: JSON.stringify({
+      model: model,
+      messages: [{role:'user', content:messageContent}],
+      temperature: 0.7,
+      max_tokens: 1000
+    })
+  });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  return data.choices && data.choices[0] ? data.choices[0].message.content.trim() : '';
+}
+
+async function callMistral(q, key, imageBase64){
+  // mistral-small-latest supports vision input, so the same model works with or without an image
+  const messageContent = imageBase64
+    ? [
+        { type:'text', text:q },
+        { type:'image_url', image_url:imageBase64 }
+      ]
+    : q;
+
+  const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body: JSON.stringify({
+      model: 'mistral-small-latest',
+      messages: [{role:'user', content:messageContent}],
+      temperature: 0.7,
+      max_tokens: 1000
+    })
+  });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  return data.choices && data.choices[0] ? data.choices[0].message.content.trim() : '';
+}
+
+/* ======== Web Search + Wikipedia Summary (NEW) ======== */
+async function callWebSearchAndSummary(question) {
+  setStatus('web', 'در حال جستجو...');
+  setBody('web', 'در حال جستجو در ویکی‌پدیا و وب...', '');
+
+  try {
+    // Step 1: Search Wikipedia (Persian + English)
+    const searchQuery = encodeURIComponent(question);
+    const searchUrl = `https://fa.wikipedia.org/w/api.php?action=query&list=search&srsearch=${searchQuery}&format=json&origin=*&srlimit=3`;
+    
+    const searchRes = await fetch(searchUrl);
+    const searchData = await searchRes.json();
+
+    if (!searchData.query || !searchData.query.search || searchData.query.search.length === 0) {
+      // Try English Wikipedia if no Persian results
+      const enSearchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${searchQuery}&format=json&origin=*&srlimit=3`;
+      const enRes = await fetch(enSearchUrl);
+      const enData = await enRes.json();
+      
+      if (!enData.query || !enData.query.search || enData.query.search.length === 0) {
+        return 'متأسفانه اطلاعات مرتبطی در ویکی‌پدیا پیدا نشد. لطفاً سوال را واضح‌تر بپرسید.';
+      }
+      searchData.query = enData.query;
+    }
+
+    const topResult = searchData.query.search[0];
+    const pageTitle = topResult.title;
+
+    // Step 2: Get summary from Wikipedia
+    const summaryUrl = `https://fa.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(pageTitle)}`;
+    let summaryRes = await fetch(summaryUrl);
+    
+    if (!summaryRes.ok) {
+      // Try English
+      const enSummaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(pageTitle)}`;
+      summaryRes = await fetch(enSummaryUrl);
+    }
+    
+    const summaryData = await summaryRes.json();
+    
+    let result = `**${pageTitle}**\n\n`;
+    
+    if (summaryData.extract) {
+      result += summaryData.extract + '\n\n';
+    } else {
+      result += topResult.snippet.replace(/<[^>]*>/g, '') + '\n\n';
+    }
+
+    result += `منبع: ویکی‌پدیا\n`;
+    if (summaryData.content_urls && summaryData.content_urls.desktop) {
+      result += `لینک: ${summaryData.content_urls.desktop.page}`;
+    }
+
+    setStatus('web', 'پاسخ آماده');
+    setBody('web', result, 'done');
+    return result;
+
+  } catch (e) {
+    const errorMsg = 'جستجو با خطا مواجه شد. لطفاً دوباره امتحان کنید یا سوال را ساده‌تر کنید.';
+    setStatus('web', 'خطا');
+    setBody('web', errorMsg, 'error');
+    return errorMsg;
+  }
+}
+
+/* ======== Main Ask Function ======== */
+async function askAll(){
+  const qEl = document.getElementById('question');
+  let q = qEl.value.trim();
+  if(!q && currentImageBase64){
+    q = 'این تصویر چیست؟ لطفاً توضیح بده.';
+  }
+  if(!q){
+    qEl.style.border = '1px solid #e08a8a';
+    setTimeout(()=> qEl.style.border = 'none', 1200);
+    return;
+  }
+  
+  const askBtn = document.getElementById('askBtn');
+  askBtn.disabled = true;
+  document.getElementById('summaryCard').classList.remove('show');
+  document.getElementById('corsNote').textContent = '';
+
+  const keys = {
+    groq: document.getElementById('key-groq').value.trim(),
+    mistral: document.getElementById('key-mistral').value.trim()
+  };
+
+  const imageForRequest = currentImageBase64;
+
+  // Run Groq + Mistral + Web Search in parallel
+  const [groqText, mistralText, webText] = await Promise.all([
+    runLLM('groq', keys.groq, () => callGroq(q, keys.groq, imageForRequest)),
+    runLLM('mistral', keys.mistral, () => callMistral(q, keys.mistral, imageForRequest)),
+    callWebSearchAndSummary(q)
+  ]);
+
+  const results = {groq: groqText, mistral: mistralText, web: webText};
+  const names = {groq:'Groq', mistral:'Mistral', web:'جستجو + خلاصه ویکی‌پدیا'};
+  const workingIds = Object.keys(results).filter(id => results[id] && results[id].trim().length > 10);
+
+  askBtn.disabled = false;
+
+  if(workingIds.length === 0){
+    document.getElementById('corsNote').innerHTML = 'هیچ پاسخی دریافت نشد. کلیدها را چک کنید.';
+    return;
+  }
+
+  // Show summary
+  const summaryCard = document.getElementById('summaryCard');
+  const summaryBody = document.getElementById('summaryBody');
+  summaryCard.classList.add('show');
+  summaryBody.innerHTML = '<span class="spinner"></span> در حال جمع‌بندی...';
+
+  let combined = `سوال کاربر: ${q}\n\n`;
+  
+  for(const id of workingIds){
+    combined += `--- ${names[id]} ---\n${results[id]}\n\n`;
+  }
+  
+  combined += `\n\nدستور: یک جمع‌بندی کوتاه، دقیق و مفید به زبان فارسی بنویس. نکات کلیدی از هر منبع را ترکیب کن. حداکثر ۵-۶ جمله.`;
+
+  // Prefer Groq for summary
+  let summaryText = '';
+  try {
+    if(keys.groq) {
+      summaryText = await callGroq(combined, keys.groq);
+    } else if(keys.mistral) {
+      summaryText = await callMistral(combined, keys.mistral);
+    }
+  } catch(e) {}
+
+  if(summaryText && summaryText.length > 20){
+    summaryBody.textContent = summaryText;
+  } else {
+    // Fallback simple summary
+    summaryBody.textContent = `از Groq و Mistral پاسخ‌های خوبی دریافت شد. بخش جستجوی ویکی‌پدیا هم اطلاعات مرتبطی ارائه داد. برای جزئیات بیشتر پاسخ‌های هر بخش را بخوانید.`;
+  }
+}
+
+async function runLLM(id, key, fn){
+  if(!key){
+    setStatus(id, 'بدون کلید');
+    setBody(id, 'کلید API وارد نشده. از بخش تنظیمات اضافه کنید.', 'error');
+    return null;
+  }
+  setLoading(id);
+  try{
+    const text = await fn();
+    setStatus(id, 'پاسخ آماده');
+    setBody(id, text || '(پاسخ خالی)', 'done');
+    return text;
+  }catch(e){
+    setStatus(id, 'خطا');
+    setBody(id, 'خطا در دریافت پاسخ. کلید را چک کنید.', 'error');
+    return null;
+  }
+}
+
+/* Enter key support */
+document.getElementById('question').addEventListener('keydown', function(e){
+  if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
+    e.preventDefault();
+    askAll();
+  }
+});
+
+/* Initial load */
+window.addEventListener('load', function(){
+  const granted = localStorage.getItem('aiCouncilAccess') === 'granted';
+  const loginScreen = document.getElementById('loginScreen');
+  
+  if(!granted){
+    loginScreen.style.display = 'flex';
+  } else {
+    loginScreen.style.display = 'none';
+  }
+});
+</script>
+</body>
+</html>
